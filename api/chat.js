@@ -1,27 +1,22 @@
-const FREE_VISION_MODELS = [
-  'google/gemma-3-27b-it:free',
-  'google/gemma-3-12b-it:free',
-  'mistralai/mistral-small-3.1-24b-instruct:free',
-  'meta-llama/llama-4-maverick:free',
-  'qwen/qwen2.5-vl-72b-instruct:free',
-  null // null = let OpenRouter pick any available free model
-];
-
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function tryModel(apiKey, model, system, userContent) {
-  const body = {
-    messages: [
-      { role: 'system', content: system || 'You are a helpful assistant.' },
-      { role: 'user',   content: userContent }
-    ],
-    max_tokens: 1024,
-    temperature: 0.7
-  };
+// Fetch live list of free vision-capable models from OpenRouter
+async function getFreevisionModels(apiKey) {
+  const res = await fetch('https://openrouter.ai/api/v1/models', {
+    headers: { 'Authorization': `Bearer ${apiKey}` }
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
 
-  // Only set model if we have one — otherwise OpenRouter picks automatically
-  if (model) body.model = model;
+  return data.data
+    .filter(m =>
+      m.id.endsWith(':free') &&
+      m.architecture?.input_modalities?.includes('image')
+    )
+    .map(m => m.id);
+}
 
+async function callModel(apiKey, model, system, userContent) {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -30,7 +25,15 @@ async function tryModel(apiKey, model, system, userContent) {
       'HTTP-Referer': 'https://gallery-seven.vercel.app',
       'X-Title': 'The Gallery'
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: system || 'You are a helpful assistant.' },
+        { role: 'user',   content: userContent }
+      ],
+      max_tokens: 1024,
+      temperature: 0.7
+    })
   });
 
   if (!res.ok) {
@@ -40,9 +43,8 @@ async function tryModel(apiKey, model, system, userContent) {
 
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || '';
-  const usedModel = data.model || model || 'auto';
   if (!text) throw new Error('Empty response');
-  return { text, usedModel };
+  return { text, usedModel: data.model || model };
 }
 
 export default async function handler(req, res) {
@@ -78,20 +80,28 @@ export default async function handler(req, res) {
     userContent = String(content);
   }
 
-  // Try each model in order, fall back to next on failure
-  for (const model of FREE_VISION_MODELS) {
+  // Get live list of free vision models
+  const models = await getFreevisionModels(OPENROUTER_API_KEY);
+  console.log('Available free vision models:', models);
+
+  if (!models.length) {
+    return res.status(500).json({ error: 'No free vision models available right now. Please try again shortly.' });
+  }
+
+  // Try each model until one works
+  for (const model of models) {
     try {
-      const { text, usedModel } = await tryModel(OPENROUTER_API_KEY, model, system, userContent);
+      const { text, usedModel } = await callModel(OPENROUTER_API_KEY, model, system, userContent);
       const modelLabel = usedModel.replace(':free', '').split('/').pop();
       return res.status(200).json({
         content: [{ text }],
         model: modelLabel
       });
     } catch (err) {
-      console.log(`Model ${model || 'auto'} failed: ${err.message}, trying next...`);
+      console.log(`Model ${model} failed: ${err.message}, trying next...`);
       await sleep(300);
     }
   }
 
-  return res.status(500).json({ error: 'All AI models are currently unavailable. Please try again shortly.' });
+  return res.status(500).json({ error: 'All free AI models are currently busy. Please try again shortly.' });
 }
