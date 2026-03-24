@@ -42,7 +42,7 @@ export default async function handler(req, res) {
         'X-Title': 'The Gallery'
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free',
+        model: 'openrouter/free',
         messages: [
           { role: 'system', content: system || 'You are a helpful assistant.' },
           { role: 'user',   content: userContent }
