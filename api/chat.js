@@ -42,7 +42,7 @@ export default async function handler(req, res) {
         'X-Title': 'The Gallery'
       },
       body: JSON.stringify({
-        model: 'openrouter/free',
+        model: 'qwen/qwen2.5-vl-72b-instruct:free',
         messages: [
           { role: 'system', content: system || 'You are a helpful assistant.' },
           { role: 'user',   content: userContent }
