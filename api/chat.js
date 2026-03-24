@@ -1,61 +1,41 @@
+const FREE_VISION_MODELS = [
+  'google/gemma-3-27b-it:free',
+  'google/gemma-3-12b-it:free',
+  'mistralai/mistral-small-3.1-24b-instruct:free',
+  'meta-llama/llama-4-maverick:free',
+  'openrouter/auto'
+];
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function callGemini(apiKey, system, content, attempt = 0) {
-  // Build Gemini parts from content array
-  const parts = [];
-
-  for (const block of content) {
-    if (block.type === 'text') {
-      parts.push({ text: block.text });
-    } else if (block.type === 'image') {
-      if (block.source?.type === 'base64') {
-        parts.push({
-          inlineData: {
-            mimeType: block.source.media_type || 'image/jpeg',
-            data: block.source.data
-          }
-        });
-      } else if (block.source?.type === 'url') {
-        // Fetch image and convert to base64
-        const imgRes = await fetch(block.source.url);
-        const arrayBuf = await imgRes.arrayBuffer();
-        const base64 = Buffer.from(arrayBuf).toString('base64');
-        const mime = imgRes.headers.get('content-type') || 'image/jpeg';
-        parts.push({ inlineData: { mimeType: mime, data: base64 } });
-      }
-    }
-  }
-
-  const body = {
-    system_instruction: { parts: [{ text: system || 'You are a helpful assistant.' }] },
-    contents: [{ role: 'user', parts }],
-    generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
-  };
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }
-  );
-
-  // Rate limited - retry up to 3 times with increasing delay
-  if (res.status === 429 && attempt < 3) {
-    const waitMs = (attempt + 1) * 5000; // 5s, 10s, 15s
-    await sleep(waitMs);
-    return callGemini(apiKey, system, content, attempt + 1);
-  }
+async function tryModel(apiKey, model, system, userContent) {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://gallery-seven.vercel.app',
+      'X-Title': 'The Gallery'
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: system || 'You are a helpful assistant.' },
+        { role: 'user',   content: userContent }
+      ],
+      max_tokens: 1024,
+      temperature: 0.7
+    })
+  });
 
   if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    const msg = errData?.error?.message || `Gemini API error ${res.status}`;
-    throw new Error(msg);
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Error ${res.status}`);
   }
 
   const data = await res.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const text = data.choices?.[0]?.message?.content || '';
+  if (!text) throw new Error('Empty response');
   return text;
 }
 
@@ -65,24 +45,48 @@ export default async function handler(req, res) {
   }
 
   const { system, content } = req.body;
+  if (!content) return res.status(400).json({ error: 'Missing content' });
 
-  if (!content) {
-    return res.status(400).json({ error: 'Missing content' });
+  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+  if (!OPENROUTER_API_KEY) return res.status(500).json({ error: 'OPENROUTER_API_KEY is not set' });
+
+  // Build OpenRouter compatible content array (supports text + image URL)
+  let userContent;
+  if (Array.isArray(content)) {
+    userContent = content.map(block => {
+      if (block.type === 'text') {
+        return { type: 'text', text: block.text };
+      } else if (block.type === 'image') {
+        if (block.source?.type === 'base64') {
+          return {
+            type: 'image_url',
+            image_url: { url: `data:${block.source.media_type};base64,${block.source.data}` }
+          };
+        } else if (block.source?.type === 'url') {
+          return { type: 'image_url', image_url: { url: block.source.url } };
+        }
+      }
+      return null;
+    }).filter(Boolean);
+  } else {
+    userContent = String(content);
   }
 
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_API_KEY) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not set' });
+  // Try each model in order until one works
+  for (const model of FREE_VISION_MODELS) {
+    try {
+      const text = await tryModel(OPENROUTER_API_KEY, model, system, userContent);
+      // Return text + model name so index.html can display which AI responded
+      const modelLabel = model.replace(':free', '').split('/').pop();
+      return res.status(200).json({
+        content: [{ text }],
+        model: modelLabel
+      });
+    } catch (err) {
+      console.log(`Model ${model} failed: ${err.message}, trying next...`);
+      await sleep(500);
+    }
   }
 
-  try {
-    const text = await callGemini(GEMINI_API_KEY, system, content);
-
-    // Return in the same shape index.html expects
-    return res.status(200).json({
-      content: [{ text }]
-    });
-  } catch (err) {
-    return res.status(500).json({ error: err.message || 'Internal server error' });
-  }
+  return res.status(500).json({ error: 'All available AI models are currently unavailable. Please try again shortly.' });
 }
