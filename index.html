@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Gallery — An AI Museum Experience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600&family=Barlow:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --white: #ffffff;
+    --off-white: #f7f7f7;
+    --light-grey: #e8e8e8;
+    --mid-grey: #b8b8b8;
+    --dark-grey: #6b6b6b;
+    --near-black: #1a1a1a;
+    --black: #000000;
+    --red: #e4002b;
+  }
+
+  html.dark {
+    --white: #111111;
+    --off-white: #181818;
+    --light-grey: #2a2a2a;
+    --mid-grey: #555555;
+    --dark-grey: #888888;
+    --near-black: #f0f0f0;
+    --black: #ffffff;
+    --red: #ff3352;
+  }
+
+  /* Smooth transition for all colour-bearing properties */
+  *, *::before, *::after {
+    transition:
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      color 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  /* Override transitions that would look wrong */
+  img, .r-thumb, .artworkImg { transition: opacity 0.4s, transform 0.35s ease !important; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--white);
+    font-family: 'Barlow', sans-serif;
+    color: var(--near-black);
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--white);
+    border-bottom: 1.5px solid var(--near-black);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    height: 58px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    padding: 0 2rem;
+    border-right: 1px solid var(--light-grey);
+  }
+
+  .wordmark {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    letter-spacing: 0.01em;
+    color: var(--black);
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .wordmark-sub {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 300;
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    color: var(--dark-grey);
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    padding: 0 2rem;
+    gap: 1.5rem;
+  }
+
+  .header-tag {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--dark-grey);
+  }
+
+  .header-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--white);
+    background: var(--red);
+    padding: 0.28rem 0.7rem;
+  }
+
+  /* ── NAV ── */
+  nav {
+    background: var(--white);
+    border-bottom: 1px solid var(--light-grey);
+    display: flex;
+    padding: 0 2rem;
+  }
+
+  .nav-tab {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    padding: 0.9rem 1.4rem;
+    cursor: pointer;
+    border: none;
+    background: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.18s;
+  }
+
+  .nav-tab:hover { color: var(--near-black); }
+
+  .nav-tab.active {
+    color: var(--near-black);
+    border-bottom-color: var(--near-black);
+    font-weight: 700;
+  }
+
+  /* ── PANELS ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ══════════════════════════════════
+     GALLERY PANEL
+  ══════════════════════════════════ */
+  .gallery-layout {
+    display: grid;
+    grid-template-columns: 1fr 370px;
+    min-height: calc(100vh - 102px);
+  }
+
+  /* LEFT */
+  .frame-area {
+    background: var(--off-white);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 3rem 3rem;
+    border-right: 1px solid var(--light-grey);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle dot grid texture */
+  .frame-area::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+
+  .frame-wrapper {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    width: 100%;
+  }
+
+  /* The actual frame */
+  .picture-frame {
+    position: relative;
+    background: var(--white);
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.1),
+      0 4px 12px rgba(0,0,0,0.07),
+      0 12px 32px rgba(0,0,0,0.09),
+      0 28px 56px rgba(0,0,0,0.07),
+      0 48px 80px rgba(0,0,0,0.05);
+    cursor: pointer;
+    transition: box-shadow 0.3s ease;
+    display: inline-block;
+  }
+
+  .picture-frame.drag-over {
+    box-shadow:
+      0 0 0 2px var(--red),
+      0 12px 32px rgba(0,0,0,0.15);
+  }
+
+  /* White mat border */
+  .frame-mat {
+    padding: 32px;
+    background: var(--white);
+  }
+
+  /* Inner canvas */
+  .frame-canvas {
+    position: relative;
+    background: #d8d8d8;
+    min-width: 280px;
+    min-height: 280px;
+    max-width: min(540px, calc(100vw - 180px));
+    max-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .frame-canvas img {
+    display: block;
+    max-width: 100%;
+    max-height: 60vh;
+    min-width: 280px;
+    min-height: 280px;
+    object-fit: contain;
+    transition: opacity 0.4s;
+  }
+
+  .frame-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
+    text-align: center;
+    transition: opacity 0.2s;
+  }
+
+  .frame-empty.gone { opacity: 0; pointer-events: none; }
+
+  .empty-icon {
+    width: 44px;
+    height: 44px;
+    color: var(--mid-grey);
+  }
+
+  .empty-main {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+  }
+
+  .empty-sub {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 300;
+    color: var(--mid-grey);
+    letter-spacing: 0.08em;
+  }
+
+  /* Artwork label / plaque */
+  .artwork-label {
+    text-align: left;
+    width: 100%;
+    max-width: 560px;
+    border-left: 3px solid var(--near-black);
+    padding-left: 1rem;
+  }
+
+  .label-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--near-black);
+    line-height: 1.1;
+  }
+
+  .label-sub {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.76rem;
+    font-weight: 300;
+    color: var(--dark-grey);
+    margin-top: 0.25rem;
+    letter-spacing: 0.04em;
+    font-style: italic;
+  }
+
+  /* Input buttons */
+  .input-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .ghost-btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dark-grey);
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--light-grey);
+    background: var(--white);
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+
+  .ghost-btn:hover {
+    color: var(--near-black);
+    border-color: var(--near-black);
+  }
+
+  #fileInput { display: none; }
+
+  /* RIGHT SIDEBAR */
+  .sidebar {
+    background: var(--white);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--light-grey);
+    overflow-y: auto;
+    max-height: calc(100vh - 102px);
+    position: sticky;
+    top: 102px;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--light-grey); }
+
+  .s-section {
+    padding: 1.4rem 1.5rem;
+    border-bottom: 1px solid var(--light-grey);
+  }
+
+  .s-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    margin-bottom: 1rem;
+    display: block;
+  }
+
+  /* Curator */
+  .curator-row {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+  }
+
+  .curator-monogram {
+    width: 34px;
+    height: 34px;
+    background: var(--near-black);
+    color: var(--white);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0;
+  }
+
+  .curator-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--near-black);
+    line-height: 1.1;
+  }
+
+  .curator-role {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 300;
+    color: var(--dark-grey);
+  }
+
+  /* Notice */
+  .notice {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.73rem;
+    font-weight: 300;
+    color: var(--dark-grey);
+    line-height: 1.6;
+    padding: 0.6rem 0.9rem;
+    background: var(--off-white);
+    border-left: 2px solid var(--red);
+  }
+
+  .notice a { color: var(--red); text-decoration: none; }
+
+  /* Categories */
+  .cats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .cat-pill {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.63rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dark-grey);
+    padding: 0.32rem 0.75rem;
+    border: 1px solid var(--light-grey);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .cat-pill:hover {
+    color: var(--near-black);
+    border-color: var(--near-black);
+  }
+
+  .cat-pill.active {
+    color: var(--white);
+    background: var(--near-black);
+    border-color: var(--near-black);
+  }
+
+  /* Response */
+  .response-box {
+    flex: 1;
+    padding: 1.4rem 1.5rem;
+    min-height: 160px;
+    max-height: 65vh;
+    overflow-y: auto;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 300;
+    line-height: 1.85;
+    color: var(--near-black);
+  }
+
+  .resp-placeholder {
+    font-size: 0.82rem;
+    color: var(--mid-grey);
+    font-style: italic;
+    font-weight: 300;
+    line-height: 1.7;
+  }
+
+  .resp-text { animation: fadeUp 0.3s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(5px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .resp-text strong { font-weight: 500; }
+
+  .typing {
+    display: none;
+    gap: 4px;
+    align-items: center;
+    padding: 0.4rem 0;
+  }
+
+  .typing.on { display: flex; }
+
+  .typing-dot {
+    width: 4px;
+    height: 4px;
+    background: var(--mid-grey);
+    border-radius: 50%;
+    animation: tdot 1.2s infinite;
+  }
+
+  .typing-dot:nth-child(2) { animation-delay: 0.18s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.36s; }
+
+  @keyframes tdot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  .no-img-msg {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--red);
+    display: none;
+    margin-bottom: 0.6rem;
+  }
+
+  /* Question row */
+  .q-zone {
+    padding: 1rem 1.2rem;
+    background: var(--off-white);
+    border-top: 1px solid var(--light-grey);
+    display: flex;
+    gap: 0.5rem;
+    position: sticky;
+    bottom: 0;
+  }
+
+  .q-input {
+    flex: 1;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 300;
+    color: var(--near-black);
+    background: var(--white);
+    border: 1px solid var(--light-grey);
+    padding: 0.6rem 0.85rem;
+    outline: none;
+    transition: border-color 0.18s;
+  }
+
+  .q-input:focus { border-color: var(--near-black); }
+  .q-input::placeholder { color: var(--mid-grey); }
+
+  .q-btn {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--white);
+    background: var(--near-black);
+    border: none;
+    padding: 0.6rem 1.1rem;
+    cursor: pointer;
+    transition: background 0.18s;
+    white-space: nowrap;
+  }
+
+  .q-btn:hover { background: var(--red); }
+  .q-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ══════════════════════════════════
+     ART FINDER PANEL
+  ══════════════════════════════════ */
+  #panel-finder {
+    padding: 3.5rem 3rem 5rem;
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .finder-eyebrow {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-bottom: 0.5rem;
+  }
+
+  .finder-heading {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: clamp(2.2rem, 5vw, 4rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    color: var(--near-black);
+    line-height: 0.95;
+    margin-bottom: 0.6rem;
+  }
+
+  .finder-desc {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 300;
+    color: var(--dark-grey);
+    margin-bottom: 2.5rem;
+    max-width: 520px;
+    line-height: 1.6;
+  }
+
+  .search-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .field-wrap { display: flex; flex-direction: column; gap: 0.45rem; }
+
+  .f-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+  }
+
+  .f-input {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: var(--near-black);
+    background: var(--white);
+    border: none;
+    border-bottom: 1.5px solid var(--near-black);
+    padding: 0.6rem 0.2rem;
+    outline: none;
+    transition: border-color 0.18s;
+    width: 100%;
+  }
+
+  .f-input:focus { border-bottom-color: var(--red); }
+  .f-input::placeholder { color: var(--mid-grey); }
+
+  .finder-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .source-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 3rem;
+    flex-wrap: wrap;
+  }
+
+  .source-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+    margin-right: 0.3rem;
+  }
+
+  .source-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dark-grey);
+    padding: 0.32rem 0.75rem;
+    border: 1px solid var(--light-grey);
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    background: var(--white);
+  }
+
+  .source-toggle:hover { border-color: var(--near-black); color: var(--near-black); }
+
+  .source-toggle.active {
+    background: var(--near-black);
+    color: var(--white);
+    border-color: var(--near-black);
+  }
+
+  .source-toggle .src-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+
+  .btn-primary {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--white);
+    background: var(--near-black);
+    border: none;
+    padding: 0.85rem 2.2rem;
+    cursor: pointer;
+    transition: background 0.18s;
+  }
+
+  .btn-primary:hover { background: var(--red); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .btn-secondary {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--near-black);
+    background: none;
+    border: 1.5px solid var(--near-black);
+    padding: 0.82rem 1.6rem;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+
+  .btn-secondary:hover { background: var(--near-black); color: var(--white); }
+  .btn-secondary:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Results */
+  .results-divider {
+    height: 1.5px;
+    background: var(--near-black);
+    margin-bottom: 2rem;
+    display: none;
+  }
+
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .r-card {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    background: var(--white);
+    border: 1px solid var(--light-grey);
+    overflow: hidden;
+  }
+
+  .r-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    border-color: var(--near-black);
+  }
+
+  .r-thumb-wrap {
+    width: 100%;
+    aspect-ratio: 4/3;
+    overflow: hidden;
+    background: var(--off-white);
+  }
+
+  .r-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.35s ease;
+  }
+
+  .r-card:hover .r-thumb { transform: scale(1.04); }
+
+  .r-info {
+    padding: 0.85rem 0.9rem;
+    border-top: 1px solid var(--light-grey);
+  }
+
+  .r-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--near-black);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  .r-artist {
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 300;
+    color: var(--dark-grey);
+    margin-top: 0.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .r-source {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--red);
+    margin-top: 0.4rem;
+  }
+
+  .no-results {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 3.5rem;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 300;
+    color: var(--mid-grey);
+    font-style: italic;
+  }
+
+  /* Loader */
+  .finder-loader { display: none; padding: 2.5rem; text-align: center; }
+  .finder-loader.on { display: block; }
+
+  .loader-ring {
+    width: 36px;
+    height: 36px;
+    border: 2px solid var(--light-grey);
+    border-top-color: var(--near-black);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loader-txt {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mid-grey);
+  }
+
+  /* ── MODAL ── */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(26,26,26,0.55);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+  }
+
+  .overlay.open { display: flex; }
+
+  .modal {
+    background: var(--white);
+    border: 1.5px solid var(--near-black);
+    padding: 2.5rem;
+    max-width: 460px;
+    width: 92%;
+  }
+
+  .modal-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--near-black);
+    margin-bottom: 1.2rem;
+  }
+
+  .modal-input {
+    width: 100%;
+    font-family: 'Barlow', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 300;
+    color: var(--near-black);
+    background: var(--off-white);
+    border: none;
+    border-bottom: 1.5px solid var(--near-black);
+    padding: 0.65rem 0.3rem;
+    outline: none;
+    margin-bottom: 1.2rem;
+  }
+
+  .modal-row { display: flex; gap: 0.6rem; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(5rem);
+    background: var(--near-black);
+    color: var(--white);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0.7rem 1.4rem;
+    z-index: 999;
+    transition: transform 0.3s ease;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── DARK MODE: frame shadow override ── */
+  html.dark .picture-frame {
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.07),
+      0 4px 12px rgba(0,0,0,0.5),
+      0 12px 32px rgba(0,0,0,0.5),
+      0 28px 56px rgba(0,0,0,0.4);
+  }
+
+  html.dark .frame-area::after {
+    background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
+  }
+
+  /* ── THEME TOGGLE BUTTON ── */
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--dark-grey);
+    background: none;
+    border: none;
+    border-left: 1px solid var(--light-grey);
+    padding: 0 1.2rem;
+    height: 100%;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .theme-toggle:hover { color: var(--near-black); background: var(--off-white); }
+
+  .toggle-icon {
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform 0.4s ease;
+  }
+
+  html.dark .toggle-icon { transform: rotate(180deg); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .gallery-layout { grid-template-columns: 1fr; }
+    .sidebar { max-height: none; position: static; border-left: none; border-top: 1px solid var(--light-grey); }
+    .search-grid { grid-template-columns: 1fr; }
+    #panel-finder { padding: 2rem 1.5rem 4rem; }
+    .header-right { display: none; }
+  }
+
+  @media (max-width: 540px) {
+    .frame-mat { padding: 16px; }
+    .frame-canvas { min-width: 240px; min-height: 240px; }
+    .frame-area { padding: 2rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div>
+      <div class="wordmark">The Gallery</div>
+      <div class="wordmark-sub">AI Museum Experience</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="header-tag">Powered by AI Vision</span>
+    <span class="header-badge">Free Admission</span>
+  </div>
+  <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+    <span class="toggle-icon" id="toggleIcon">☀</span>
+    <span id="toggleLabel">Light</span>
+  </button>
+</header>
+
+<!-- NAV -->
+<nav>
+  <button class="nav-tab active" data-panel="gallery">Gallery</button>
+  <button class="nav-tab" data-panel="finder">Art Finder</button>
+</nav>
+
+<!-- ══ GALLERY PANEL ══ -->
+<div class="panel active" id="panel-gallery">
+  <div class="gallery-layout">
+
+    <!-- Left: Frame -->
+    <div class="frame-area">
+      <div class="frame-wrapper">
+
+        <div class="picture-frame" id="pictureFrame"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event)">
+          <div class="frame-mat">
+            <div class="frame-canvas" id="frameCanvas">
+              <div class="frame-empty" id="frameEmpty">
+                <svg class="empty-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
+                  <rect x="5" y="5" width="38" height="38"/>
+                  <circle cx="17" cy="19" r="4"/>
+                  <path d="M5 35 L15 23 L26 35 L34 27 L43 35"/>
+                </svg>
+                <div class="empty-main">Place Artwork Here</div>
+                <div class="empty-sub">Drop · Paste · Upload · URL</div>
+              </div>
+              <img id="artworkImg" src="" alt="" style="display:none; opacity:0;" onload="onImgLoad()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Label -->
+        <div class="artwork-label">
+          <div class="label-title" id="labelTitle">Awaiting Artwork</div>
+          <div class="label-sub" id="labelSub">Load an image to begin your gallery experience</div>
+        </div>
+
+        <!-- Input buttons -->
+        <div class="input-row">
+          <button class="ghost-btn" onclick="document.getElementById('fileInput').click()">↑ Upload File</button>
+          <button class="ghost-btn" onclick="openUrlModal()">⊕ Image URL</button>
+          <button class="ghost-btn" onclick="showToast('Use Ctrl+V or ⌘+V anywhere on the page')">⊞ Paste</button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" onchange="handleFileInput(event)">
+
+      </div>
+    </div>
+
+    <!-- Right: Sidebar -->
+    <aside class="sidebar">
+
+      <div class="s-section">
+        <span class="s-label">Your Curator</span>
+        <div class="curator-row">
+          <div class="curator-monogram">M</div>
+          <div>
+            <div class="curator-name">Marguerite</div>
+            <div class="curator-role">Gallery Curator · Art Historian</div>
+          </div>
+        </div>
+      </div>
+
+
+
+      <div class="s-section">
+        <span class="s-label">Explore by Category</span>
+        <div class="no-img-msg" id="noImgMsg">Load an artwork into the frame first.</div>
+        <div class="cats">
+          <span class="cat-pill" data-cat="Art History & Background — who made it, what movement, when, historical context">Art History</span>
+          <span class="cat-pill" data-cat="Subject Matter & Symbolism — what is depicted, the narrative, religious or political meaning">Subject Matter</span>
+          <span class="cat-pill" data-cat="Formal Elements — colour palette, composition, line, shape, texture, light and shadow in detail">Formal Elements</span>
+          <span class="cat-pill" data-cat="Technique & Medium — how it was made, materials, brushwork, any special methods used">Technique & Medium</span>
+          <span class="cat-pill" data-cat="Style & Movement — how this work relates to or breaks from an art movement or period">Style & Movement</span>
+          <span class="cat-pill" data-cat="Artist's Intent — what the artist was trying to express or communicate">Artist's Intent</span>
+          <span class="cat-pill" data-cat="Viewer Interpretation — invite multiple possible readings, ask the viewer what they notice and feel">Interpretation</span>
+          <span class="cat-pill" data-cat="Emotional & Sensory Impact — the mood, feeling, and atmosphere this work creates in the viewer">Emotional Impact</span>
+          <span class="cat-pill" data-cat="Comparison — how this relates to other works by the same artist or within the same movement or era">Comparisons</span>
+          <span class="cat-pill" data-cat="Physical Presence & Scale — what the physical size and material condition would mean for a viewer in person">Physical Presence</span>
+        </div>
+      </div>
+
+      <div class="response-box" id="responseBox">
+        <div class="resp-placeholder" id="respPlaceholder">
+          Select a category or ask Marguerite anything about the artwork currently in the frame.
+        </div>
+        <div class="typing" id="typingEl">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+        <div id="responseText"></div>
+        <div id="modelIndicator" style="display:none; font-size:0.7rem; opacity:0.4; margin-top:10px; font-family:monospace; letter-spacing:0.05em;"></div>
+      </div>
+
+      <div class="q-zone">
+        <input class="q-input" id="qInput" type="text"
+               placeholder="Ask Marguerite anything…"
+               onkeydown="if(event.key==='Enter') askQuestion()">
+        <button class="q-btn" id="askBtn" onclick="askQuestion()">Ask</button>
+      </div>
+
+    </aside>
+  </div>
+</div>
+
+<!-- ══ ART FINDER PANEL ══ -->
+<div class="panel" id="panel-finder">
+  <div class="finder-eyebrow">Collection Search</div>
+  <div class="finder-heading">Discover<br>Artworks</div>
+  <div class="finder-desc">Search 500,000+ real works from the Metropolitan Museum of Art, Art Institute of Chicago, Cleveland Museum of Art, and Wikimedia Commons — completely free, no account required. Note: some artists (e.g. Monet) have image restrictions on certain museum APIs — try toggling sources below if results are limited.</div>
+
+  <div class="search-grid">
+    <div class="field-wrap">
+      <div class="f-label">Artist / Creator</div>
+      <input class="f-input" id="searchArtist" placeholder="e.g. Monet, Rembrandt, Hokusai…">
+    </div>
+    <div class="field-wrap">
+      <div class="f-label">Subject / Keywords</div>
+      <input class="f-input" id="searchKeyword" placeholder="e.g. portrait, seascape, garden…">
+    </div>
+    <div class="field-wrap">
+      <div class="f-label">Medium / Technique</div>
+      <input class="f-input" id="searchMedium" placeholder="e.g. oil on canvas, etching…">
+    </div>
+    <div class="field-wrap">
+      <div class="f-label">Period / Movement</div>
+      <input class="f-input" id="searchPeriod" placeholder="e.g. Impressionism, Baroque…">
+    </div>
+  </div>
+
+  <div class="finder-actions">
+    <button class="btn-primary" id="searchBtn" onclick="searchArt()">Search Collection</button>
+    <button class="btn-secondary" id="randomBtn" onclick="randomArt()">Random Discovery</button>
+  </div>
+
+  <div class="source-filter">
+    <span class="source-label">Sources</span>
+    <div class="source-toggle active" id="src-met" onclick="toggleSource('met')">
+      <span class="src-dot"></span>Met Museum
+    </div>
+    <div class="source-toggle active" id="src-aic" onclick="toggleSource('aic')">
+      <span class="src-dot"></span>Art Institute of Chicago
+    </div>
+    <div class="source-toggle active" id="src-wiki" onclick="toggleSource('wiki')">
+      <span class="src-dot"></span>Wikimedia Commons
+    </div>
+    <div class="source-toggle active" id="src-cma" onclick="toggleSource('cma')">
+      <span class="src-dot"></span>Cleveland Museum of Art
+    </div>
+  </div>
+
+  <div class="finder-loader" id="finderLoader">
+    <div class="loader-ring"></div>
+    <div class="loader-txt">Searching the collection…</div>
+  </div>
+
+  <div class="results-divider" id="resDivider"></div>
+  <div class="results-grid" id="resultsGrid"></div>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="urlOverlay" onclick="if(event.target===this) closeUrlModal()">
+  <div class="modal">
+    <div class="modal-title">Load Image from URL</div>
+    <input class="modal-input" id="urlInput" type="text" placeholder="https://…"
+           onkeydown="if(event.key==='Enter') loadFromUrl()">
+    <div class="modal-row">
+      <button class="btn-primary" onclick="loadFromUrl()">Load Image</button>
+      <button class="btn-secondary" onclick="closeUrlModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─────────── THEME ─────────── */
+(function() {
+  // Restore saved preference immediately to avoid flash
+  if (localStorage.getItem('gallery-theme') === 'dark') {
+    document.documentElement.classList.add('dark');
+  }
+})();
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark');
+  localStorage.setItem('gallery-theme', isDark ? 'dark' : 'light');
+  document.getElementById('toggleIcon').textContent  = isDark ? '☾' : '☀';
+  document.getElementById('toggleLabel').textContent = isDark ? 'Dark' : 'Light';
+}
+
+// Set correct icon on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const isDark = document.documentElement.classList.contains('dark');
+  document.getElementById('toggleIcon').textContent  = isDark ? '☾' : '☀';
+  document.getElementById('toggleLabel').textContent = isDark ? 'Dark' : 'Light';
+});
+
+/* ─────────── STATE ─────────── */
+let currentImageDataUrl = null;
+let currentImageUrl     = null;
+let isLoading           = false;
+
+/* ─────────── TABS ─────────── */
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+  });
+});
+
+/* ─────────── IMAGE LOADING ─────────── */
+function setImage(src, title, sub, isDataUrl = false) {
+  const img = document.getElementById('artworkImg');
+  img.style.opacity = '0';
+  img.style.display = 'block';
+  img.src = src;
+
+  if (isDataUrl) { currentImageDataUrl = src; currentImageUrl = null; }
+  else           { currentImageUrl = src;     currentImageDataUrl = null; }
+
+  document.getElementById('labelTitle').textContent = title || 'Untitled Artwork';
+  document.getElementById('labelSub').textContent   = sub   || 'Ready for analysis';
+  document.getElementById('frameEmpty').classList.add('gone');
+  clearResponse();
+}
+
+function onImgLoad() {
+  document.getElementById('artworkImg').style.opacity = '1';
+  if (!currentImageDataUrl && currentImageUrl) {
+    try {
+      const i = document.getElementById('artworkImg');
+      const c = document.createElement('canvas');
+      c.width = i.naturalWidth; c.height = i.naturalHeight;
+      c.getContext('2d').drawImage(i, 0, 0);
+      currentImageDataUrl = c.toDataURL('image/jpeg', 0.9);
+    } catch(e) { /* CORS — will pass URL */ }
+  }
+}
+
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => setImage(ev.target.result, file.name.replace(/\.[^.]+$/, ''), 'Uploaded file · Ready for analysis', true);
+  r.readAsDataURL(file);
+}
+
+function openUrlModal()  { document.getElementById('urlOverlay').classList.add('open'); document.getElementById('urlInput').focus(); }
+function closeUrlModal() { document.getElementById('urlOverlay').classList.remove('open'); }
+function loadFromUrl() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+  setImage(url, 'Web Artwork', 'Loaded from URL · Ready for analysis');
+  closeUrlModal();
+}
+
+document.addEventListener('paste', e => {
+  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const r = new FileReader();
+      r.onload = ev => setImage(ev.target.result, 'Pasted Artwork', 'Pasted from clipboard · Ready for analysis', true);
+      r.readAsDataURL(item.getAsFile());
+      return;
+    }
+  }
+});
+
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById('pictureFrame').classList.add('drag-over');
+}
+function handleDragLeave() {
+  document.getElementById('pictureFrame').classList.remove('drag-over');
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('pictureFrame').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const r = new FileReader();
+    r.onload = ev => setImage(ev.target.result, file.name.replace(/\.[^.]+$/, ''), 'Dropped file · Ready for analysis', true);
+    r.readAsDataURL(file);
+  }
+}
+
+/* ─────────── AI ASSISTANT ─────────── */
+document.querySelectorAll('.cat-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    askQuestion(pill.dataset.cat);
+  });
+});
+
+async function askQuestion(category = null) {
+  if (isLoading) return;
+
+  const img = document.getElementById('artworkImg');
+  const hasImage = img.src && img.style.display !== 'none' && img.src !== window.location.href;
+
+  if (!hasImage) {
+    document.getElementById('noImgMsg').style.display = 'block';
+    setTimeout(() => document.getElementById('noImgMsg').style.display = 'none', 3000);
+    return;
+  }
+
+  document.getElementById('noImgMsg').style.display = 'none';
+
+  const customQ  = document.getElementById('qInput').value.trim();
+  const question = category
+    ? `Please analyse this artwork focusing on: ${category}. Respond as expert gallery curator Marguerite.`
+    : customQ || null;
+
+  if (!question) return;
+
+  setLoading(true);
+  clearResponse(true);
+
+  try {
+    const content = [];
+    if (currentImageDataUrl) {
+      const [header, b64] = currentImageDataUrl.split(',');
+      const mime = (header.match(/:(.*?);/) || [])[1] || 'image/jpeg';
+      content.push({ type: 'image', source: { type: 'base64', media_type: mime, data: b64 } });
+    } else if (currentImageUrl) {
+      content.push({ type: 'image', source: { type: 'url', url: currentImageUrl } });
+    }
+    content.push({ type: 'text', text: question });
+
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system: `You are Marguerite, a distinguished gallery curator and art historian at The Gallery — a modern museum. You have deep expertise across all periods and styles of art history. Speak with warmth, intellectual precision, and genuine passion. Your responses are informative yet accessible — you invite dialogue rather than lecture. Begin with the most striking or surprising thing you notice. Keep responses to 100–160 words. Always finish on a complete sentence — never stop mid-thought. When asked to identify specific anime, films, games, or other pop culture titles, only answer if you are highly confident — otherwise say you are not certain rather than guessing.`,
+        content
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || `Server error ${res.status}`);
+    }
+
+    const data  = await res.json();
+    const reply = data.content?.[0]?.text || 'I was unable to respond. Please try again.';
+    showResponse(reply);
+    const modelEl = document.getElementById('modelIndicator');
+    if (data.model) { modelEl.textContent = `via ${data.model}`; modelEl.style.display = 'block'; }
+    else { modelEl.style.display = 'none'; }
+    if (!category) document.getElementById('qInput').value = '';
+
+  } catch(err) {
+    showResponse(`*${err.message || 'Could not connect. Check your API configuration.'}*`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function setLoading(v) {
+  isLoading = v;
+  document.getElementById('typingEl').classList.toggle('on', v);
+  document.getElementById('askBtn').disabled = v;
+}
+
+function clearResponse(keepTyping = false) {
+  document.getElementById('responseText').innerHTML = '';
+  document.getElementById('respPlaceholder').style.display = keepTyping ? 'none' : 'block';
+}
+
+function showResponse(text) {
+  document.getElementById('respPlaceholder').style.display = 'none';
+  document.getElementById('responseText').innerHTML =
+    `<div class="resp-text"><p>${
+      text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br>')
+    }</p></div>`;
+}
+
+/* ─────────── SOURCE TOGGLES ─────────── */
+const activeSources = { met: true, aic: true, wiki: true, cma: true };
+
+function toggleSource(src) {
+  // Don't allow deactivating all sources
+  const others = Object.entries(activeSources).filter(([k]) => k !== src).some(([, v]) => v);
+  if (activeSources[src] && !others) { showToast('At least one source must be active'); return; }
+  activeSources[src] = !activeSources[src];
+  document.getElementById(`src-${src}`).classList.toggle('active', activeSources[src]);
+}
+
+/* ─────────── ART FINDER ─────────── */
+async function searchArt() {
+  const fields = {
+    artist:  document.getElementById('searchArtist').value.trim(),
+    keyword: document.getElementById('searchKeyword').value.trim(),
+    medium:  document.getElementById('searchMedium').value.trim(),
+    period:  document.getElementById('searchPeriod').value.trim()
+  };
+  if (!Object.values(fields).some(Boolean)) { showToast('Enter at least one search term'); return; }
+  await runSearch(fields);
+}
+
+async function randomArt() {
+  const picks = [
+    { keyword: 'landscape', medium: 'oil painting' },
+    { keyword: 'portrait', period: 'Renaissance' },
+    { keyword: 'flowers', period: 'Impressionist' },
+    { keyword: 'mythology', period: 'Baroque' },
+    { keyword: 'woodblock print', period: 'Japanese Edo' },
+    { keyword: 'still life', period: 'Dutch Golden Age' },
+    { keyword: 'sculpture', period: 'ancient Egyptian' },
+    { keyword: 'abstract', period: 'Modernist' },
+    { keyword: 'woman', period: 'Pre-Raphaelite' },
+    { keyword: 'seascape', period: 'Romantic' },
+    { keyword: 'ink painting', period: 'Chinese Song Dynasty' },
+    { keyword: 'realism', period: 'American 19th century' }
+  ];
+  await runSearch(picks[Math.floor(Math.random() * picks.length)]);
+}
+
+async function runSearch(fields) {
+  const s = document.getElementById('searchBtn');
+  const r = document.getElementById('randomBtn');
+  s.disabled = r.disabled = true;
+
+  const loader  = document.getElementById('finderLoader');
+  const grid    = document.getElementById('resultsGrid');
+  const divider = document.getElementById('resDivider');
+  loader.classList.add('on');
+  grid.innerHTML = '';
+  divider.style.display = 'none';
+
+  if (typeof fields === 'string') fields = { keyword: fields };
+
+  try {
+    const fetches = [
+      activeSources.met  ? fetchMet(fields)       : Promise.resolve([]),
+      activeSources.aic  ? fetchAIC(fields)       : Promise.resolve([]),
+      activeSources.wiki ? fetchWikimedia(fields) : Promise.resolve([]),
+      activeSources.cma  ? fetchCleveland(fields) : Promise.resolve([])
+    ];
+    const [metR, aicR, wikiR, cmaR] = await Promise.allSettled(fetches);
+
+    let all = [];
+    if (metR.status === 'fulfilled')  all = all.concat(metR.value);
+    if (aicR.status === 'fulfilled')  all = all.concat(aicR.value);
+    if (wikiR.status === 'fulfilled') all = all.concat(wikiR.value);
+    if (cmaR.status === 'fulfilled')  all = all.concat(cmaR.value);
+
+    // Deduplicate by title+artist fingerprint
+    const seen = new Set();
+    all = all.filter(item => {
+      const key = (item.title + '|' + item.artist).toLowerCase().replace(/\s+/g, '');
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // If artist specified: sort so confirmed artist matches come first
+    if (fields.artist) {
+      const words = fields.artist.toLowerCase().split(/\s+/);
+      all.sort((a, b) => {
+        const aM = words.some(w => a.artist.toLowerCase().includes(w)) ? 0 : 1;
+        const bM = words.some(w => b.artist.toLowerCase().includes(w)) ? 0 : 1;
+        return aM - bM;
+      });
+    }
+
+    all = all.slice(0, 12);
+    divider.style.display = 'block';
+
+    if (!all.length) {
+      grid.innerHTML = '<div class="no-results">No artworks found. Try different keywords.</div>';
+    } else {
+      all.forEach(item => grid.appendChild(makeCard(item)));
+    }
+  } catch(e) {
+    grid.innerHTML = '<div class="no-results">Could not reach museum collections. Please check your connection.</div>';
+  } finally {
+    loader.classList.remove('on');
+    s.disabled = r.disabled = false;
+  }
+}
+
+async function fetchMet(fields) {
+  // Build query — do NOT use artistOrCulture=true; it narrows too aggressively
+  // and causes many artist works (e.g. Monet) to return empty image fields.
+  // Instead query by name and filter image-less results out afterward.
+  const parts = [];
+  if (fields.artist)  parts.push(fields.artist);
+  if (fields.keyword) parts.push(fields.keyword);
+  if (fields.medium)  parts.push(fields.medium);
+  if (fields.period)  parts.push(fields.period);
+  const q = parts.join(' ');
+
+  const params = new URLSearchParams({ hasImages: 'true', q });
+  const r = await fetch(`https://collectionapi.metmuseum.org/public/collection/v1/search?${params}`);
+  const d = await r.json();
+  if (!d.objectIDs?.length) return [];
+
+  // Fetch more IDs than needed since many will have no image
+  const ids = shuffle(d.objectIDs).slice(0, 20);
+  const details = await Promise.allSettled(ids.map(id =>
+    fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`).then(r2 => r2.json())
+  ));
+
+  let results = details
+    .filter(x => x.status === 'fulfilled' && x.value.primaryImageSmall && x.value.primaryImageSmall !== '')
+    .map(x => ({
+      title:  x.value.title || 'Untitled',
+      artist: x.value.artistDisplayName || 'Unknown Artist',
+      date:   x.value.objectDate || '',
+      thumb:  x.value.primaryImageSmall,
+      large:  x.value.primaryImage || x.value.primaryImageSmall,
+      source: 'Met Museum',
+      medium: x.value.medium || ''
+    }));
+
+  if (fields.medium) {
+    const mLow = fields.medium.toLowerCase();
+    const filtered = results.filter(a => a.medium.toLowerCase().includes(mLow));
+    if (filtered.length > 0) results = filtered;
+  }
+
+  return results;
+}
+
+async function fetchAIC(fields) {
+  const mustParts = [];
+  if (fields.artist)  mustParts.push(`artist_title:(${fields.artist})^3 OR artist_display:(${fields.artist})^3`);
+  if (fields.keyword) mustParts.push(fields.keyword);
+  if (fields.medium)  mustParts.push(`medium_display:(${fields.medium})^2`);
+  if (fields.period)  mustParts.push(`style_title:(${fields.period}) OR classification_title:(${fields.period})`);
+
+  const q = mustParts.join(' ');
+  const r = await fetch(
+    `https://api.artic.edu/api/v1/artworks/search?q=${encodeURIComponent(q)}&fields=id,title,artist_title,artist_display,date_display,image_id,medium_display&limit=12`
+  );
+  const d = await r.json();
+  if (!d.data) return [];
+
+  return d.data.filter(a => a.image_id).map(a => ({
+    title:  a.title || 'Untitled',
+    artist: a.artist_title || a.artist_display?.split('\n')[0] || 'Unknown Artist',
+    date:   a.date_display || '',
+    thumb:  `https://www.artic.edu/iiif/2/${a.image_id}/full/400,/0/default.jpg`,
+    large:  `https://www.artic.edu/iiif/2/${a.image_id}/full/843,/0/default.jpg`,
+    source: 'Art Institute of Chicago',
+    medium: a.medium_display || ''
+  }));
+}
+
+async function fetchWikimedia(fields) {
+  let fileTitles = [];
+
+  if (fields.artist) {
+    const name = fields.artist.trim();
+
+    // Try exact full name first, then guess "Claude X" if only last name given
+    // e.g. "Monet" → try "Claude Monet", "Monet"
+    const namesToTry = [name];
+    if (!name.includes(' ')) {
+      // Single word — likely a last name, prepend common first names via search
+      namesToTry.unshift(`Claude ${name}`, `Vincent van ${name}`, `Pablo ${name}`,
+        `Salvador ${name}`, `Auguste ${name}`, `Rembrandt van ${name}`);
+    }
+
+    for (const n of namesToTry) {
+      const cats = [`Paintings by ${n}`, `Works by ${n}`];
+      for (const cat of cats) {
+        // Get direct files + subcategories in parallel
+        const [directFiles, subCats] = await Promise.all([
+          wikiCategoryFiles(cat, 20),
+          wikiSubcategories(cat)
+        ]);
+
+        const subFiles = (await Promise.allSettled(
+          subCats.slice(0, 10).map(sc => wikiCategoryFiles(sc, 8))
+        )).flatMap(r => r.status === 'fulfilled' ? r.value : []);
+
+        fileTitles = [...directFiles, ...subFiles];
+        if (fileTitles.length >= 1) break; // found something — stop trying name variants
+      }
+      if (fileTitles.length >= 1) break;
+    }
+  }
+
+  // Fallback: text search in file namespace
+  if (!fileTitles.length) {
+    const parts = [];
+    if (fields.artist)  parts.push(fields.artist);
+    if (fields.keyword) parts.push(fields.keyword);
+    if (fields.medium)  parts.push(fields.medium);
+    if (fields.period)  parts.push(fields.period);
+    if (!fields.medium) parts.push('painting');
+    const q = parts.join(' ');
+
+    const p = new URLSearchParams({
+      action: 'query', list: 'search', srnamespace: '6',
+      srsearch: q, srlimit: '20', format: 'json', origin: '*'
+    });
+    const r = await fetch(`https://commons.wikimedia.org/w/api.php?${p}`);
+    const d = await r.json();
+    fileTitles = (d.query?.search || []).map(s => s.title);
+  }
+
+  if (!fileTitles.length) return [];
+
+  const unique = [...new Set(fileTitles)];
+  const picked = shuffle(unique).slice(0, 20);
+
+  const infoParams = new URLSearchParams({
+    action: 'query', titles: picked.join('|'),
+    prop: 'imageinfo', iiprop: 'url|extmetadata|mediatype',
+    iiurlwidth: '400', format: 'json', origin: '*'
+  });
+  const r2 = await fetch(`https://commons.wikimedia.org/w/api.php?${infoParams}`);
+  const d2 = await r2.json();
+  if (!d2.query?.pages) return [];
+
+  const results = [];
+  for (const page of Object.values(d2.query.pages)) {
+    const info = page.imageinfo?.[0];
+    if (!info?.thumburl) continue;
+
+    // Filter by mediatype — only keep BITMAP (photos/paintings), skip DRAWING/AUDIO/VIDEO
+    if (info.mediatype && info.mediatype !== 'BITMAP') continue;
+
+    // Also skip by filename extension as a secondary check (filename, not full URL)
+    const filename = page.title || '';
+    if (filename.match(/\.(svg|ogg|ogv|mp3|mp4|webm|pdf|tif|tiff)$/i)) continue;
+
+    const meta = info.extmetadata || {};
+    if (meta.NonFree?.value === 'true') continue;
+
+    const rawTitle = meta.ObjectName?.value
+      || page.title.replace(/^File:/i, '').replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+    const title = rawTitle.replace(/<[^>]+>/g, '').trim();
+    const rawArtist = meta.Artist?.value || '';
+    const artist = rawArtist.replace(/<[^>]+>/g, '').trim() || (fields.artist || 'Unknown Artist');
+    const date = (meta.DateTimeOriginal?.value || meta.Date?.value || '').replace(/<[^>]+>/g, '').trim();
+
+    results.push({ title, artist, date, thumb: info.thumburl, large: info.url, source: 'Wikimedia Commons', medium: '' });
+  }
+  return results;
+}
+
+async function wikiCategoryFiles(categoryName, limit = 20) {
+  const p = new URLSearchParams({
+    action: 'query', list: 'categorymembers',
+    cmtitle: `Category:${categoryName}`, cmtype: 'file',
+    cmlimit: String(limit), format: 'json', origin: '*'
+  });
+  const r = await fetch(`https://commons.wikimedia.org/w/api.php?${p}`);
+  const d = await r.json();
+  return (d.query?.categorymembers || []).map(m => m.title);
+}
+
+async function wikiSubcategories(categoryName) {
+  const p = new URLSearchParams({
+    action: 'query', list: 'categorymembers',
+    cmtitle: `Category:${categoryName}`, cmtype: 'subcat',
+    cmlimit: '15', format: 'json', origin: '*'
+  });
+  const r = await fetch(`https://commons.wikimedia.org/w/api.php?${p}`);
+  const d = await r.json();
+  // Return just the category name without "Category:" prefix
+  return (d.query?.categorymembers || []).map(m => m.title.replace(/^Category:/i, ''));
+}
+
+async function fetchCleveland(fields) {
+  const parts = [];
+  if (fields.artist)  parts.push(fields.artist);
+  if (fields.keyword) parts.push(fields.keyword);
+  if (fields.medium)  parts.push(fields.medium);
+  if (fields.period)  parts.push(fields.period);
+  const q = parts.join(' ');
+
+  const params = new URLSearchParams({
+    q,
+    has_image: '1',
+    limit: '16',
+    skip: '0',
+    fields: 'id,title,creators,creation_date,images,technique,url'
+  });
+
+  const r = await fetch(`https://openaccess-api.clevelandart.org/api/artworks/?${params}`);
+  const d = await r.json();
+  if (!d.data?.length) return [];
+
+  const results = [];
+  for (const item of d.data) {
+    const imgObj = item.images?.web || item.images?.print;
+    if (!imgObj?.url) continue;
+    const artist = item.creators?.[0]?.description || 'Unknown Artist';
+    results.push({
+      title:  item.title || 'Untitled',
+      artist: artist.replace(/\s*\(.*?\)/g, '').trim(), // strip birth/death years
+      date:   item.creation_date || '',
+      thumb:  imgObj.url,
+      large:  item.images?.print?.url || imgObj.url,
+      source: 'Cleveland Museum of Art',
+      medium: item.technique || ''
+    });
+  }
+
+  if (fields.medium) {
+    const mLow = fields.medium.toLowerCase();
+    const filtered = results.filter(a => a.medium.toLowerCase().includes(mLow));
+    if (filtered.length > 0) return filtered;
+  }
+  return results;
+}
+
+function makeCard(item) {
+  const card = document.createElement('div');
+  card.className = 'r-card';
+  card.innerHTML = `
+    <div class="r-thumb-wrap">
+      <img class="r-thumb" src="${item.thumb}" alt="${item.title}" loading="lazy" onerror="this.closest('.r-card').remove()">
+    </div>
+    <div class="r-info">
+      <div class="r-title">${item.title}</div>
+      <div class="r-artist">${item.artist}${item.date ? ' · ' + item.date : ''}</div>
+      <div class="r-source">${item.source}</div>
+    </div>`;
+  card.addEventListener('click', () => {
+    const sub = `${item.artist}${item.date ? ' · ' + item.date : ''} · ${item.source}`;
+    setImage(item.large, item.title, sub);
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('[data-panel="gallery"]').classList.add('active');
+    document.getElementById('panel-gallery').classList.add('active');
+    showToast(`Loaded: ${item.title}`);
+  });
+  return card;
+}
+
+/* ─────────── UTILS ─────────── */
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
