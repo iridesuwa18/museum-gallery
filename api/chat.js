@@ -3,12 +3,25 @@ const FREE_VISION_MODELS = [
   'google/gemma-3-12b-it:free',
   'mistralai/mistral-small-3.1-24b-instruct:free',
   'meta-llama/llama-4-maverick:free',
-  'openrouter/auto'
+  'qwen/qwen2.5-vl-72b-instruct:free',
+  null // null = let OpenRouter pick any available free model
 ];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function tryModel(apiKey, model, system, userContent) {
+  const body = {
+    messages: [
+      { role: 'system', content: system || 'You are a helpful assistant.' },
+      { role: 'user',   content: userContent }
+    ],
+    max_tokens: 1024,
+    temperature: 0.7
+  };
+
+  // Only set model if we have one — otherwise OpenRouter picks automatically
+  if (model) body.model = model;
+
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -17,15 +30,7 @@ async function tryModel(apiKey, model, system, userContent) {
       'HTTP-Referer': 'https://gallery-seven.vercel.app',
       'X-Title': 'The Gallery'
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: system || 'You are a helpful assistant.' },
-        { role: 'user',   content: userContent }
-      ],
-      max_tokens: 1024,
-      temperature: 0.7
-    })
+    body: JSON.stringify(body)
   });
 
   if (!res.ok) {
@@ -35,8 +40,9 @@ async function tryModel(apiKey, model, system, userContent) {
 
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content || '';
+  const usedModel = data.model || model || 'auto';
   if (!text) throw new Error('Empty response');
-  return text;
+  return { text, usedModel };
 }
 
 export default async function handler(req, res) {
@@ -50,7 +56,7 @@ export default async function handler(req, res) {
   const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
   if (!OPENROUTER_API_KEY) return res.status(500).json({ error: 'OPENROUTER_API_KEY is not set' });
 
-  // Build OpenRouter compatible content array (supports text + image URL)
+  // Build OpenRouter compatible content array (supports text + image)
   let userContent;
   if (Array.isArray(content)) {
     userContent = content.map(block => {
@@ -72,21 +78,20 @@ export default async function handler(req, res) {
     userContent = String(content);
   }
 
-  // Try each model in order until one works
+  // Try each model in order, fall back to next on failure
   for (const model of FREE_VISION_MODELS) {
     try {
-      const text = await tryModel(OPENROUTER_API_KEY, model, system, userContent);
-      // Return text + model name so index.html can display which AI responded
-      const modelLabel = model.replace(':free', '').split('/').pop();
+      const { text, usedModel } = await tryModel(OPENROUTER_API_KEY, model, system, userContent);
+      const modelLabel = usedModel.replace(':free', '').split('/').pop();
       return res.status(200).json({
         content: [{ text }],
         model: modelLabel
       });
     } catch (err) {
-      console.log(`Model ${model} failed: ${err.message}, trying next...`);
-      await sleep(500);
+      console.log(`Model ${model || 'auto'} failed: ${err.message}, trying next...`);
+      await sleep(300);
     }
   }
 
-  return res.status(500).json({ error: 'All available AI models are currently unavailable. Please try again shortly.' });
+  return res.status(500).json({ error: 'All AI models are currently unavailable. Please try again shortly.' });
 }
